@@ -1,0 +1,28 @@
+# Data stays local — never publish the raw/scraped dataset (SPEC §2.1 rule 8).
+# Keep the directory skeleton (.gitkeep) but ignore all data contents.
+data/**
+!data/**/
+!data/**/.gitkeep
+
+# Experiment tracking
+mlruns/
+mlartifacts/
+
+# Trained model artifacts (reproducible from training; keep skeleton)
+models/*
+!models/.gitkeep
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/

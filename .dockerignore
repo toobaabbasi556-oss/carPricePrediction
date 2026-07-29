@@ -1,0 +1,19 @@
+# Keep the build context small. NOTE: models/serving_model.joblib is force-included
+# below because the deploy image needs it and it is gitignored (not in git, but present
+# locally at build time).
+.git
+.venv
+__pycache__
+*.pyc
+.ruff_cache
+.pytest_cache
+mlruns
+mlartifacts
+notebooks
+tests
+reports
+data
+
+# Ignore the models dir but keep the one artifact the image serves.
+models/*
+!models/serving_model.joblib

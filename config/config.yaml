@@ -1,0 +1,70 @@
+# Single source of truth for all params (SPEC §8). No hardcoded paths/params in .py files.
+
+project:
+  current_year: 2026          # used for age = current_year - year (SPEC §4)
+  random_seed: 42
+
+# ---------------------------------------------------------------------------
+# Scraping — SPEC §2. Polite, robots.txt-compliant, single-worker.
+# ---------------------------------------------------------------------------
+scrape:
+  base_url: "https://www.pakwheels.com"
+  robots_url: "https://www.pakwheels.com/robots.txt"
+  search_url: "https://www.pakwheels.com/used-cars/search/-/"
+  # Detail-page pattern: /used-cars/{make}-{model}-{year}-for-sale-in-{city}-{id}
+
+  # SPEC §2.1 — non-negotiable politeness
+  user_agent: "pkcar-valuation-bot/0.1 (portfolio research; contact: tooba1704@gmail.com)"
+  default_crawl_delay_sec: 3   # used only if robots.txt states no Crawl-delay
+  max_workers: 1               # one worker, no concurrency
+  request_timeout_sec: 30
+  max_retries: 3               # retry transient 5xx; STOP on repeated 403/Cloudflare (no evasion)
+
+  # SPEC §2.2 — scrape scope
+  cities:
+    - Karachi
+    - Lahore
+    - Islamabad
+    - Rawalpindi
+  max_items: 7000
+
+  # Stage 2 detail pass
+  detail_checkpoint_every: 50  # checkpoint frequency (pages), resumable
+
+# ---------------------------------------------------------------------------
+# Paths — data/ is gitignored (SPEC §2.1 rule 8, §9)
+# ---------------------------------------------------------------------------
+paths:
+  raw_dir: "data/raw"
+  interim_dir: "data/interim"
+  processed_dir: "data/processed"
+  listings_index: "data/raw/listings_index.parquet"     # Stage 1 output
+  listings_full: "data/raw/listings_full.parquet"       # Stage 2 merged output
+  model_dir: "models"                                    # trained model artifacts (gitignored)
+  serving_model: "models/serving_model.joblib"           # conformal model served by the API
+
+# ---------------------------------------------------------------------------
+# Feature engineering — SPEC §4
+# ---------------------------------------------------------------------------
+features:
+  rare_min_count: 10   # categorical levels rarer than this collapse to __rare__ (fit in-fold)
+
+# ---------------------------------------------------------------------------
+# Modeling — SPEC §5–§7
+# ---------------------------------------------------------------------------
+model:
+  target: "price_pkr"          # trained on log(price_pkr); metrics reported in raw PKR
+  log_target: true
+  test_size: 0.2
+  cv_folds: 5
+  cv_strategy: "grouped"       # GroupKFold, no naive KFold (SPEC §5)
+  # Group by vehicle (make+model): the same model recurs across rows and would leak if
+  # split randomly (SPEC §5). scrape_date is NOT used — it is crawl provenance (a few
+  # dates from our resumable crawler), not a listing-posted date, so no valid temporal
+  # axis exists (single snapshot, SPEC §11).
+  group_key: "make_model"
+  interval_alpha: 0.10         # 90% prediction intervals (SPEC §6)
+
+mlflow:
+  tracking_uri: "file:./mlruns"
+  experiment_name: "pkcar-valuation"
